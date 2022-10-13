@@ -9,7 +9,7 @@
 #include <memory>
 #include <functional>
 
-// When a RBNode is constructed, it's color will be RED.
+// When an RBNode is constructed, it's color will be RED.
 template<typename Type>
 class RBNode {
 public:
@@ -36,11 +36,11 @@ public:
 
     void setParent(const Pointer p) noexcept { _parent = p; }
 
-    bool isBlack() const noexcept { return _black; }
+    [[nodiscard]] bool isBlack() const noexcept { return _black; }
 
-    bool isRed() const noexcept { return !isBlack(); }
+    [[nodiscard]] bool isRed() const noexcept { return !isBlack(); }
 
-    bool getColor() const noexcept { return isBlack(); }
+    [[nodiscard]] bool getColor() const noexcept { return isBlack(); }
 
     void setColor(const bool isBlack) noexcept { _black = isBlack; }
 

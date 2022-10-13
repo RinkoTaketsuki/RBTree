@@ -5,6 +5,7 @@
 #pragma once
 
 #include "RBNode.h"
+#include <iostream>
 
 std::string &paint(std::string &s) {
     s = "\033[31m" + s;
@@ -12,9 +13,11 @@ std::string &paint(std::string &s) {
 }
 
 /**
- * @details This container is like std::multiset. Each node's left children are all less than it and right children
+ * @brief This container is like std::multiset. Each node's left children are all less than it and right children
  * are all greater or equal to it.
  * @tparam Type : The element type, which should support the default, copy and move constructor and the operator\<.
+ * @details If the container is empty, root will be nil. Nevertheless root's parent and leave's child-pointers will
+ * point to nil. The parent and children of nil is undefined (may be any value).
  */
 template<typename Type>
 class RBTree {
@@ -61,6 +64,13 @@ public:
         return ret;
     }
 
+    /**
+     * @brief Insert the data into the container.
+     * @details First, it will search the proper position and emplacement a new node there, like what it does in
+     * binary-search-tree. Then we will adjust the subtree whose root is between this->_root and the inserted node,
+     * which is implemented in @code RBTree::_insertFixup @endcode
+     * @param data : The element to be inserted.
+     */
     void insert(const Type &data) {
         Pointer past = getNil(), curr = _root;
         while (getNil() != curr) {
@@ -77,13 +87,8 @@ public:
             past->setLeftChild(curr);
         else
             past->setRightChild(curr);
-#ifdef DEBUG
-        callback1();
-#endif
         _insertFixup(curr);
-#ifdef DEBUG
-        callback2();
-#endif
+        // std::cout << toString() << std::flush;
     }
 
     void erase(const Type &data) {
@@ -91,13 +96,8 @@ public:
     }
 
     std::string toString() const {
-        return _toString(_root);
+        return "--------------------\n" + _toString(_root);
     }
-
-#ifdef DEBUG
-    virtual void callback1() = 0;
-    virtual void callback2() = 0;
-#endif
 
 private:
     // Return a pointer pointing to the node with the minimum value.
@@ -154,37 +154,52 @@ private:
         x->setParent(y);
     }
 
+    /**
+     * @brief Adjust the subtrees whose root is between this->_root and z.
+     * @param z : The pointer to the inserted node.
+     * @details In each iteration, there are situations as following: <br>
+     * 1. If z's parent is black, then we will do nothing. <br>
+     * 2. If z's parent and uncle are both red, then we paint the two nodes black, and paint the grandparent red.
+     * Let z be z's grandparent. <br>
+     * 3. If z's parent is red and its uncle is black and z is "near" its uncle, then we rotate z's parent. Let z be z's
+     * parent. <br>
+     * 4. If z's parent is red and its uncle is black and z is "distant from" its uncle, then we paint the parent black,
+     * paint the grandparent red and rotate the grandparent to make z closer to root. <br>
+     * After the while-loop we need to paint the root black.
+     */
     void _insertFixup(Pointer z) {
-        // If z is root, then it won't enter the loop, and y is the uncle of z.
+        // If z is root or z's parent is root, then it won't enter the loop, and y is the uncle of z.
         while (z->getParent()->isRed()) {
             if (z->getParent() == z->getParent()->getParent()->getLeftChild()) {
                 const Pointer y = z->getParent()->getParent()->getRightChild();
-                if (y->isRed()) {
+                if (y->isRed()) { // situation 2
                     z->getParent()->setColor(BLACK);
                     y->setColor(BLACK);
                     z->getParent()->getParent()->setColor(RED);
                     z = z->getParent()->getParent();
-                } else if (z == z->getParent()->getRightChild()) {
+                } else if (z == z->getParent()->getRightChild()) { // situation 3
                     z = z->getParent();
                     _leftRotate(z);
+                } else { // situation 4
+                    z->getParent()->setColor(BLACK);
+                    z->getParent()->getParent()->setColor(RED);
+                    _rightRotate(z->getParent()->getParent());
                 }
-                z->getParent()->setColor(BLACK);
-                z->getParent()->getParent()->setColor(RED);
-                _rightRotate(z->getParent()->getParent());
             } else {
                 const Pointer y = z->getParent()->getParent()->getLeftChild();
-                if (y->isRed()) {
+                if (y->isRed()) { // situation 2
                     z->getParent()->setColor(BLACK);
                     y->setColor(BLACK);
                     z->getParent()->getParent()->setColor(RED);
                     z = z->getParent()->getParent();
-                } else if (z == z->getParent()->getLeftChild()) {
+                } else if (z == z->getParent()->getLeftChild()) { // situation 3
                     z = z->getParent();
                     _rightRotate(z);
+                } else { // situation 4
+                    z->getParent()->setColor(BLACK);
+                    z->getParent()->getParent()->setColor(RED);
+                    _leftRotate(z->getParent()->getParent());
                 }
-                z->getParent()->setColor(BLACK);
-                z->getParent()->getParent()->setColor(RED);
-                _leftRotate(z->getParent()->getParent());
             }
         }
         _root->setColor(BLACK);
@@ -296,14 +311,15 @@ private:
             p = std::to_string(t->getLeftChild()->get());
             if (t->getLeftChild()->isRed())
                 paint(p);
-            cur += "Left child: " + p + " ";
+            cur += "LeftChild: " + p + " ";
         }
         if (getNil() != t->getRightChild()) {
             p = std::to_string(t->getRightChild()->get());
             if (t->getRightChild()->isRed())
                 paint(p);
-            cur += "Right child: " + p + "\n";
+            cur += "RightChild: " + p;
         }
+        cur += "\n";
         cur += _toString(t->getLeftChild());
         cur += _toString(t->getRightChild());
         return cur;
@@ -313,17 +329,3 @@ private:
     Pointer _root;
 };
 
-#ifdef DEBUG
-template <typename Type>
-class RBTreeDebugger : public RBTree<Type> {
-public:
-    RBTreeDebugger() : RBTree<Type>() {}
-    RBTreeDebugger(std::initializer_list<Type> il) : RBTree<Type>(il) {}
-    void callback1() override {
-        this->toString();
-    }
-    void callback2() override {
-        this->toString();
-    }
-};
-#endif
