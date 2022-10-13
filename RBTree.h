@@ -2,8 +2,7 @@
 // Created by Rinko Taketsuki on 2022/10/9.
 //
 
-#ifndef RBTREE_RBTREE_H
-#define RBTREE_RBTREE_H
+#pragma once
 
 #include "RBNode.h"
 
@@ -12,6 +11,11 @@ std::string &paint(std::string &s) {
     return s += "\033[0m";
 }
 
+/**
+ * @details This container is like std::multiset. Each node's left children are all less than it and right children
+ * are all greater or equal to it.
+ * @tparam Type : The element type, which should support the default, copy and move constructor and the operator\<.
+ */
 template<typename Type>
 class RBTree {
     class RBTreeException : public std::exception {
@@ -31,7 +35,7 @@ public:
     static constexpr bool BLACK = true;
     static constexpr bool RED = false;
 
-    RBTree() : _root(nullptr), _nil(new RBNode<Type>) {}
+    RBTree() : _nil(new RBNode<Type>), _root(_nil) { _nil->setColor(BLACK); }
 
     RBTree(std::initializer_list<Type> il) : RBTree() {
         std::for_each(il.begin(), il.end(), std::bind(&RBTree::insert, this, std::placeholders::_1));
@@ -58,24 +62,28 @@ public:
     }
 
     void insert(const Type &data) {
-        if (nullptr == _root) {
-            _root = static_cast<Pointer>(new RBNode<Type>(data, getNil(), getNil(), getNil()));
-            _root->setColor(BLACK);
-            return;
-        }
-        Pointer past = nullptr, curr = _root;
+        Pointer past = getNil(), curr = _root;
         while (getNil() != curr) {
             past = curr;
-            if (data < curr->get()) curr = curr->getLeftChild();
-            else if (curr->get() < data) curr = curr->getRightChild();
-            else return;
+            if (data < curr->get())
+                curr = curr->getLeftChild();
+            else
+                curr = curr->getRightChild();
         }
         curr = static_cast<Pointer>(new RBNode<Type>(data, past, getNil(), getNil()));
-        if (data < past->get())
+        if (getNil() == past)
+            _root = curr;
+        else if (data < past->get())
             past->setLeftChild(curr);
         else
             past->setRightChild(curr);
+#ifdef DEBUG
+        callback1();
+#endif
         _insertFixup(curr);
+#ifdef DEBUG
+        callback2();
+#endif
     }
 
     void erase(const Type &data) {
@@ -83,8 +91,13 @@ public:
     }
 
     std::string toString() const {
-        return nullptr == _root ? "" : _toString(_root);
+        return _toString(_root);
     }
+
+#ifdef DEBUG
+    virtual void callback1() = 0;
+    virtual void callback2() = 0;
+#endif
 
 private:
     // Return a pointer pointing to the node with the minimum value.
@@ -105,16 +118,12 @@ private:
 
     // Left-rotate the subtree whose root is x.
     void _leftRotate(const Pointer x) {
-        if (getNil() == x)
-            throw RBTreeException("Try to left-rotate nil.");
         const Pointer y = x->getRightChild();
-        if (getNil() == y)
-            throw RBTreeException("Try to left-rotate a tree with a nil right child.");
         const Pointer p = x->getParent();
         const Pointer mid = y->getLeftChild();
+        x->setRightChild(mid);
         if (getNil() != mid)
             mid->setParent(x);
-        x->setRightChild(mid);
         y->setParent(p);
         if (getNil() == p)
             _root = y;
@@ -128,16 +137,12 @@ private:
 
     // Right-rotate the subtree whose root is x.
     void _rightRotate(const Pointer x) {
-        if (getNil() == x)
-            throw RBTreeException("Try to right-rotate nil.");
         const Pointer y = x->getLeftChild();
-        if (getNil() == y)
-            throw RBTreeException("Try to right-rotate a tree with a nil left child");
         const Pointer p = x->getParent();
         const Pointer mid = y->getRightChild();
-        if (mid)
-            mid->setParent(x);
         x->setLeftChild(mid);
+        if (getNil() != mid)
+            mid->setParent(x);
         y->setParent(p);
         if (getNil() == p)
             _root = y;
@@ -181,8 +186,8 @@ private:
                 z->getParent()->getParent()->setColor(RED);
                 _leftRotate(z->getParent()->getParent());
             }
-            _root->setColor(BLACK);
         }
+        _root->setColor(BLACK);
     }
 
     // Replace subtree u by subtree v.
@@ -269,8 +274,8 @@ private:
                 w->getLeftChild()->setColor(BLACK);
                 _rightRotate(x->getParent());
             }
-            _root->setColor(BLACK);
         }
+        _root->setColor(BLACK);
     }
 
     std::string _toString(const Pointer t) const {
@@ -304,8 +309,21 @@ private:
         return cur;
     }
 
-    Pointer _root;
     const Pointer _nil;
+    Pointer _root;
 };
 
-#endif //RBTREE_RBTREE_H
+#ifdef DEBUG
+template <typename Type>
+class RBTreeDebugger : public RBTree<Type> {
+public:
+    RBTreeDebugger() : RBTree<Type>() {}
+    RBTreeDebugger(std::initializer_list<Type> il) : RBTree<Type>(il) {}
+    void callback1() override {
+        this->toString();
+    }
+    void callback2() override {
+        this->toString();
+    }
+};
+#endif
