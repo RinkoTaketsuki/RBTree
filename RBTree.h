@@ -213,19 +213,34 @@ private:
         v->setParent(u->getParent());
     }
 
+    /**
+     * @brief Erase node z.
+     * @param z : The node to be deleted.
+     * @details Firstly, we consider 3 conditions: <br>
+     * 1. If z is a leaf node (ignoring nil), then we need to do nothing. <br>
+     * 2. If z is with only one child (ignoring nil), then we let x be the child and transplant x to the z's parent's
+     * corresponding child. <br>
+     * 3. If z is with two children (ignoring nil) and the right child has not its left child, then we let y be z's
+     * right child and paint it z's color. Let x be y's right child (may be nil). If y is the root node of z's right
+     * child, then
+     *
+     * TODO: Finish this condition's document.
+     *
+     */
     void _erase(Pointer z) {
         Pointer x = getNil(), y = z;
         auto yOriginColor = y->getColor();
         if (getNil() == z->getLeftChild()) {
             x = z->getRightChild();
-            _transplant(z, z->getRightChild());
+            _transplant(z, z->getRightChild()); // delete z
         } else if (getNil() == z->getRightChild()) {
             x = z->getLeftChild();
-            _transplant(z, z->getLeftChild());
+            _transplant(z, z->getLeftChild()); // delete z
         } else {
             y = _findMinimum(z->getRightChild());
             y->setColor(yOriginColor);
             x = y->getRightChild();
+            // TODO: This branch maybe wrong, fix it.
             if (y->getParent() == z) x->setParent(y);
             else {
                 _transplant(y, y->getRightChild());
